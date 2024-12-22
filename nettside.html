@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avansert Bildeorganisering</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #333;
+            --border-color: #ccc;
+            --highlight-color: #007bff;
+            --button-bg: #007bff;
+            --button-text: #fff;
+        }
+
+        body.dark {
+            --bg-color: #222;
+            --text-color: #ddd;
+            --border-color: #555;
+            --highlight-color: #66aaff;
+            --button-bg: #444;
+            --button-text: #ddd;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--highlight-color);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls input, .controls select, .controls button {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-right: 10px;
+            background: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+        }
+
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .gallery-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            max-width: 200px;
+        }
+
+        .gallery-item img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .gallery-item img:hover {
+            border-color: var(--highlight-color);
+            transform: scale(1.05);
+        }
+
+        .gallery-item button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: red;
+            color: var(--button-text);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 25px;
+            height: 25px;
+            font-weight: bold;
+        }
+
+        .tag-input, .note-input {
+            margin-top: 10px;
+            padding: 8px;
+            width: calc(100% - 16px);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .note-display {
+            margin-top: 10px;
+            font-style: italic;
+            color: var(--highlight-color);
+            text-align: center;
+        }
+
+        .tag-display {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tag {
+            background: var(--highlight-color);
+            color: var(--button-text);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .tag:hover {
+            opacity: 0.8;
+        }
+
+        #large-view {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-color);
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            border-radius: 8px;
+        }
+
+        #large-view img {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        #large-view button {
+            display: block;
+            margin: 10px auto 0;
+            padding: 10px 20px;
+            background: var(--button-bg);
+            color: var(--button-text);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Avansert Bildeorganisering</h1>
+    <div class="controls">
+        <input type="file" id="upload" multiple>
+        <select id="tag-filter">
+            <option value="all">Vis alle</option>
+        </select>
+        <button id="dark-mode-toggle">Dark Mode</button>
+    </div>
+    <div class="gallery" id="gallery"></div>
+
+    <div id="large-view">
+        <img id="large-img" src="">
+        <button onclick="closeLargeView()">Lukk</button>
+    </div>
+
+    <script>
+        const upload = document.getElementById('upload');
+        const gallery = document.getElementById('gallery');
+        const tagFilter = document.getElementById('tag-filter');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const largeView = document.getElementById('large-view');
+        const largeImg = document.getElementById('large-img');
+        let isDarkMode = false;
+
+        // Toggle dark mode
+        darkModeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark', isDarkMode);
+            darkModeToggle.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+        });
+
+        upload.addEventListener('change', (event) => {
+            const files = event.target.files;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const galleryItem = createGalleryItem(e.target.result, file.name);
+                    gallery.appendChild(galleryItem);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        tagFilter.addEventListener('change', () => {
+            const selectedTag = tagFilter.value;
+            const items = document.querySelectorAll('.gallery-item');
+            items.forEach(item => {
+                const tags = item.getAttribute('data-tags') || '';
+                item.style.display = (selectedTag === 'all' || tags.includes(selectedTag)) ? 'flex' : 'none';
+            });
+        });
+
+        function createGalleryItem(src, name) {
+            const div = document.createElement('div');
+            div.classList.add('gallery-item');
+            div.setAttribute('draggable', true);
+            div.setAttribute('data-tags', '');
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = name;
+            img.addEventListener('click', () => {
+                largeImg.src = img.src;
+                largeView.style.display = 'block';
+            });
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', () => {
+                div.remove();
+            });
+
+            const tagInput = document.createElement('input');
+            tagInput.type = 'text';
+            tagInput.placeholder = 'Legg til tag';
+            tagInput.classList.add('tag-input');
+            tagInput.addEventListener('change', () => {
+                const tag = tagInput.value.trim();
+                if (tag) {
+                    addTag(div, tag);
+                    tagInput.value = '';
+                }
+            });
+
+            const noteInput = document.createElement('input');
+            noteInput.type = 'text';
+            noteInput.placeholder = 'Legg til en note';
+            noteInput.classList.add('note-input');
+            noteInput.addEventListener('change', () => {
+                const noteDisplay = div.querySelector('.note-display');
+                noteDisplay.textContent = noteInput.value.trim();
+            });
+
+            const tagDisplay = document.createElement('div');
+            tagDisplay.classList.add('tag-display');
+
+            const noteDisplay = document.createElement('div');
+            noteDisplay.classList.add('note-display');
+
+            div.appendChild(img);
+            div.appendChild(removeButton);
+            div.appendChild(tagInput);
+            div.appendChild(noteInput);
+            div.appendChild(tagDisplay);
+            div.appendChild(noteDisplay);
+            return div;
+        }
+
+        function addTag(item, tag) {
+            const tags = (item.getAttribute('data-tags') || '').split(',').filter(Boolean);
+            if (!tags.includes(tag)) {
+                tags.push(tag);
+                item.setAttribute('data-tags', tags.join(','));
+
+                const tagElement = document.createElement('span');
+                tagElement.classList.add('tag');
+                tagElement.textContent = tag;
+                tagElement.addEventListener('click', () => {
+                    removeTag(item, tag, tagElement);
+                });
+
+                item.querySelector('.tag-display').appendChild(tagElement);
+
+                if (!Array.from(tagFilter.options).some(opt => opt.value === tag)) {
+                    const option = document.createElement('option');
+                    option.value = tag;
+                    option.textContent = tag;
+                    tagFilter.appendChild(option);
+                }
+            }
+        }
+
+        function removeTag(item, tag, tagElement) {
+            const tags = (item.getAttribute('data-tags') || '').split(',').filter(Boolean);
+            const index = tags.indexOf(tag);
+            if (index > -1) {
+                tags.splice(index, 1);
+                item.setAttribute('data-tags', tags.join(','));
+                tagElement.remove();
+
+                // Slett tag fra filteret hvis ingen elementer bruker den
+                const remainingItems = Array.from(document.querySelectorAll('.gallery-item')).filter(el => {
+                    return (el.getAttribute('data-tags') || '').includes(tag);
+                });
+                if (remainingItems.length === 0) {
+                    const option = Array.from(tagFilter.options).find(opt => opt.value === tag);
+                    if (option) option.remove();
+                }
+            }
+        }
+
+        function closeLargeView() {
+            largeView.style.display = 'none';
+            largeImg.src = '';
+        }
+    </script>
+</body>
+</html>
