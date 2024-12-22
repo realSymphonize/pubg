@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Gallery</title>
+    <title>Image Gallery with Cloudinary</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
@@ -96,6 +96,35 @@
     </div>
 
     <script>
+        const gallery = document.getElementById('gallery');
+
+        // Simulate persistent storage with localStorage
+        const loadGallery = () => {
+            const storedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
+            storedImages.forEach(image => addImageToGallery(image.url, image.note));
+        };
+
+        const saveGallery = () => {
+            const images = Array.from(document.querySelectorAll('.gallery-item')).map(item => {
+                return {
+                    url: item.querySelector('img').src,
+                    note: item.querySelector('.note').textContent
+                };
+            });
+            localStorage.setItem('galleryImages', JSON.stringify(images));
+        };
+
+        const addImageToGallery = (url, note = 'No note added') => {
+            const galleryItem = document.createElement('div');
+            galleryItem.classList.add('gallery-item');
+            galleryItem.innerHTML = `
+                <button onclick="this.parentElement.remove(); saveGallery();"><i class="fas fa-trash"></i></button>
+                <img src="${url}" alt="Uploaded Image">
+                <div class="note" contenteditable="true">${note}</div>
+            `;
+            gallery.appendChild(galleryItem);
+        };
+
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         darkModeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
@@ -105,26 +134,23 @@
         document.getElementById('upload-button').addEventListener('click', () => {
             cloudinary.openUploadWidget(
                 {
-                    cloudName: 'ddnb24of9', // Replace with your Cloudinary cloud name
-                    uploadPreset: 'pubgbilder', // Replace with your upload preset
+                    cloudName: 'DIN_CLOUD_NAME', // Replace with your Cloudinary cloud name
+                    uploadPreset: 'unsigned', // Replace with your upload preset
                     sources: ['local', 'url', 'camera'],
                     folder: 'gallery_images', // Optional: specify a folder
                 },
                 (error, result) => {
                     if (!error && result && result.event === 'success') {
                         const uploadedUrl = result.info.secure_url;
-                        const galleryItem = document.createElement('div');
-                        galleryItem.classList.add('gallery-item');
-                        galleryItem.innerHTML = `
-                            <button onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
-                            <img src="${uploadedUrl}" alt="Uploaded Image">
-                            <div class="note">No note added</div>
-                        `;
-                        document.getElementById('gallery').appendChild(galleryItem);
+                        addImageToGallery(uploadedUrl);
+                        saveGallery();
                     }
                 }
             );
         });
+
+        // Load the gallery on page load
+        window.addEventListener('load', loadGallery);
     </script>
 </body>
 </html>
